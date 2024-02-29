@@ -1,47 +1,66 @@
-[Setting name="Linear Hue Speed" max="0.05" min="0.0001" category="General"]
-float LinearHueSpeed = 0.001;
-
-[Setting name="Linear Hue Reset" category="General"]
-bool LinearHueReset = false;
-
-[Setting name="Set to gray" category="General"]
-bool SetToGray = false;
-
-void Main() {
-    while (true) {
-        CheckResetHue();
-
-        CTrackMania@ app = cast<CTrackMania>(GetApp());
-        if (app is null) return;
-
-        auto playground = cast<CSmArenaClient>(app.CurrentPlayground);
-        if (playground is null || playground.Arena.Players.Length == 0) return; 
-
-        auto player = cast<CSmPlayer>(playground.Arena.Players[0]);
-        if (player is null) return;
-
-        // auto player = cast<CSmPlayer>(cast<CGameCtnPlayground>(app.CurrentPlayground).Players[0]);
-
-        if (SetToGray) {
-            player.LinearHue = -1;
-            yield();
-            return;
-        }
-
-
-        if (player.LinearHue >= 0.999) {
-            player.LinearHue = 0;
-        } else {
-            player.LinearHue += LinearHueSpeed;
-        }
-
-        yield();
-    }
+enum EHueType
+{
+    CarSpeed,
+    RGB,
+    FixedColor
 }
 
-void CheckResetHue() {
-    if (LinearHueReset) {
-        LinearHueSpeed = 0.001;
-        LinearHueReset = false;
+uint16 snowCarOffset = 0;
+
+// STOLEN from https://github.com/ezio416/tm-current-effects/blob/465faccb580b4883eb0ec5502885dc0f2b2dfb1f/src/Effects.as#L247
+int GetSnowCar(CSceneVehicleVisState@ State) {
+
+    if (snowCarOffset == 0) {
+        const Reflection::MwClassInfo@ type = Reflection::GetType("CSceneVehicleVisState");
+
+        if (type is null) {
+            error("Unable to find reflection info for CSceneVehicleVisState!");
+            return 0;
+        }
+
+        snowCarOffset = type.GetMember("InputSteer").Offset - 8;
+    }
+
+    return Dev::GetOffsetUint8(State, snowCarOffset);
+}
+
+void Main()
+{
+    while (true)
+    {
+        if (S_Speed < 0) S_Speed = 0.01;
+        try 
+        {
+            CSmPlayer@ player = VehicleState::GetViewingPlayer();
+            auto state = VehicleState::GetVis(GetApp().GameScene, player).AsyncState;
+            int speed = Math::Abs(int(state.FrontSpeed * 3.6f));
+
+            if ((GetSnowCar(state) == 1) or S_Stupidity)
+            {
+                if (S_HueType == EHueType::RGB)
+                {
+                    if (player.LinearHue >= 0.999)
+                    {
+                        player.LinearHue = 0;
+                    }
+                    else
+                    {
+                        player.LinearHue += S_Speed / 100.0;
+                    }
+                } else if (S_HueType == EHueType::CarSpeed)
+                {
+                    player.LinearHue = speed / 1000.0;
+                } else
+                {
+                    player.LinearHue = S_Hue;
+                }
+            }
+            
+            yield();
+        } catch
+        {
+            yield();
+            continue;
+        }
     }
 }

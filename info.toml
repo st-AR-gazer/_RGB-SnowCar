@@ -1,5 +1,7 @@
 [meta]
-name = "RGB SnowCar"
-author = "ar....."
-version = "0.1.0"
-category = "Utilities"
+author = "JailMan"
+name = "RGBCar"
+version = "i dont care"
+
+[script]
+dependencies = [ "VehicleState" ]
